@@ -1,35 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-
-using DnsClient;
+using Newtonsoft.Json;
 
 namespace DNSTool.Controllers
 {
-    
     [ApiController]
     [Route("[controller]")]
-    
-    public class QueryController : Controller
+    public class HealthCheckController : Controller
     {
-        [HttpGet]
-        public string GetRecords()
+        [HttpGet("{domain}")]
+        public object GetRecords(string domain)
         {
-            string[] records = {"A", "AAAA", "CNAME"};
-            var result = DoLookup();
-            return result.Answers.ARecords().FirstOrDefault()?.Address.ToString();
+            var domainName = DomainName.DomainNameFactory(domain);
+            if (domainName == null)
+                return UnprocessableEntity();
 
-
-        }
-        
-        private static IDnsQueryResponse DoLookup()
-        {
-            var lookup = new LookupClient();
-            return lookup.Query("google.com", QueryType.A);
-            
+            var healthCheck = new HealthCheck(domainName);
+            var result = healthCheck.GetHealthCheck();
+            return JsonConvert.SerializeObject(result);
         }
     }
 }
