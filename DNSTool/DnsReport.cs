@@ -61,6 +61,11 @@ namespace DNSTool
             var tldNameservers = FetchTldNameservers(rootNameservers, DomainName.GetTld());
             var domainNameservers = FetchDomainNameservers(tldNameservers, DomainName.Domain);
 
+            var queryNameserver = new List<NameserverRecord>()
+            {
+                domainNameservers[new Random().Next(domainNameservers.Count)]
+            };
+
             var tasks = QueryTypes.Select(async recordType =>
             {
                 var response = await FetchDnsRecord(domainNameservers, DomainName, recordType);
@@ -71,10 +76,10 @@ namespace DNSTool
 
             var result = new Dictionary<string, object>
             {
-                {"query", DomainName},
-                {"nameserver", DnsClient.NameServers.First().Address},
+                {"query", DomainName.Domain},
+                {"nameserver", queryNameserver.First().Domain},
+                {"authoritativeNameservers", domainNameservers.Select(ns => ns.Domain).Distinct().ToList()},
                 {"time", Date},
-                {"timezone", "UTC"},
                 {"records", responses}
             };
 
@@ -116,9 +121,10 @@ namespace DNSTool
             var childNameservers = new List<NameserverRecord>();
             query.Authorities.NsRecords().ToList().ForEach(nameserver =>
             {
-                childNameservers.Add(new NameserverRecord(
-                    DnsClient.Query(nameserver.NSDName.Value, QueryType.A).Answers.AddressRecords().First().Address,
-                    nameserver.NSDName.Value));
+                DnsClient.Query(nameserver.NSDName.Value, QueryType.A).Answers.AddressRecords().ToList().ForEach(record =>
+                    {
+                        childNameservers.Add(new NameserverRecord(record.Address, nameserver.NSDName.Value));
+                    });
             });
             return childNameservers;
         }
